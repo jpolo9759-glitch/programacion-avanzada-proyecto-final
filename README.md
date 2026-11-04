@@ -1,5 +1,5 @@
 # programacion-avanzada-proyecto-final
-
+@gastos_unigual_2026_bot
 Bot de Telegram para gestión de gastos con IA (Gemini + SQLite)
 Paso 1: Estructura, entorno virtual y dependencias
 Estructura de carpetas
