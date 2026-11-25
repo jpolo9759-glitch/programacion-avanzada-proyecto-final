@@ -4,23 +4,39 @@ Asistente conversacional desarrollado en **Python** para Telegram que permite re
 
 ---
 
+## 👥 Integrantes
+
+- Milkys David Alvarez
+- Jesus Polo
+- Yesy Smith Vega
+
+---
+
+## 🎯 Problemática y objetivo
+
+Muchas personas, especialmente estudiantes y trabajadores, realizan gastos diarios sin llevar un registro organizado de sus finanzas. Anotar cada compra en una libreta o una hoja de cálculo puede resultar tedioso y hacer que se pierda información importante.
+
+El objetivo del proyecto es facilitar el registro, la consulta y la gestión de los gastos personales mediante mensajes cotidianos en Telegram, para que el usuario pueda conocer cuánto ha gastado durante el mes y en qué categorías.
+
+---
+
 ## 📋 Características Principales
 
 * **Procesamiento de Lenguaje Natural (NLP):** Interpreta mensajes cotidianos como *"Gasté 15.000 en almuerzo"* o *"Pagué 8.500 de transporte"* sin necesidad de comandos rígidos, extrayendo automáticamente el **monto**, la **moneda**, la **categoría** y una **descripción** limpia.
-* **Arquitectura Multiusuario Aislada:** Cualquier usuario de Telegram puede interactuar libremente con el bot; cada registro queda asociado y filtrado por su `telegram_user_id` en la nube, garantizando privacidad entre usuarios.
-* **Alta Disponibilidad de IA (Fallback Automático):** Configurado con un modelo principal (`gemini-3.5-flash-lite`) y un modelo de respaldo (`gemini-2.5-flash`) con reintentos automáticos ante picos de saturación (`503`).
-* **Persistencia en la Nube:** Almacenamiento en tiempo real en **Supabase (PostgreSQL)** con manejo de zona horaria local (`America/Bogota`) para reportes mensuales exactos.
+* **Arquitectura Multiusuario Aislada:** Cualquier usuario de Telegram puede interactuar libremente con el bot; cada registro queda asociado y filtrado por su `telegram_user_id` en la nube, separando los registros por usuario en las consultas realizadas por el bot.
+* **Modelo de respaldo de IA (Fallback Automático):** Configurado con un modelo principal (`gemini-3.5-flash-lite`) y un modelo de respaldo (`gemini-2.5-flash`) con hasta dos intentos por modelo ante errores de solicitud, incluidos errores de red o saturación (`503`).
+* **Persistencia en la Nube:** Almacenamiento en tiempo real en **Supabase (PostgreSQL)** con manejo de zona horaria local (`America/Bogota`) para delimitar el período mensual de las consultas.
 * **Gestión Rápida de Registros:** Soporte para reportes agrupados por categoría, eliminación del último gasto registrado (`/borrar`) y botón interactivo **Deshacer** tras cada registro.
 
 ---
 
 ## 🧠 Uso de Inteligencia Artificial (En el Producto y en el Desarrollo)
 
-El uso de Inteligencia Artificial Gemini 4 carbon en este proyecto abarca dos frentes claros:
+Se utilizó Google Gemini como servicio de inteligencia artificial del bot y como herramienta de apoyo al desarrollo del proyecto. Su uso abarca dos frentes:
 
 ### 1. En el funcionamiento del Chatbot (Google Gemini API)
 * **Comprensión y Clasificación Semántica:** En `ai_service.py`, el modelo **Gemini (`gemini-3.5-flash-lite` / `gemini-2.5-flash`)** actúa como el motor de interpretación del lenguaje natural del usuario, distinguiendo si un mensaje es el registro de un gasto o una conversación cotidiana.
-* **Extracción Estructurada (JSON):** Transforma frases libres y ambiguas (ej. *"me gasté 12 barras en un corrientazo"* o *"pagué 5.000 de mototaxi"*) en un objeto JSON estricto con los campos `es_gasto`, `monto`, `moneda`, `categoria` y `descripcion`, permitiendo almacenarlo directamente en PostgreSQL sin reglas rígidas de expresiones regulares.
+* **Extracción Estructurada (JSON):** Transforma frases libres y ambiguas (ej. *"me gasté 12 barras en un corrientazo"* o *"pagué 5.000 de mototaxi"*) en un objeto JSON estricto con los campos `es_gasto`, `monto`, `moneda`, `categoria`, `descripcion` y `comentario`. Python extrae el JSON, valida los datos y envía a PostgreSQL los campos necesarios para el registro.
 * **Asistencia Conversacional:** Cuando el usuario saluda o hace preguntas fuera del registro financiero, Gemini genera respuestas contextuales y amables sin alterar la base de datos.
 
 ### 2. En el proceso de Ingeniería y Desarrollo
@@ -38,7 +54,7 @@ El código está dividido bajo el principio de **separación de responsabilidade
 chat-bot/
 ├── main.py             # Punto de entrada: handlers de Telegram, comandos, botones y flujo principal
 ├── ai_service.py       # Capa de IA: comunicación con Google Gemini, validación JSON y respaldo de modelos
-├── database.py         # Capa de datos: conexión y consultas CRUD a Supabase (PostgreSQL)
+├── database.py         # Capa de datos: conexión, inserción, consulta y eliminación en Supabase (PostgreSQL)
 ├── requirements.txt    # Dependencias del proyecto
 ├── .env                # Variables de entorno y credenciales privadas (excluido en .gitignore)
 ├── .gitignore          # Archivos y carpetas ignorados por Git
@@ -61,7 +77,7 @@ chat-bot/
 
 ## 🗄️ Estructura de la Base de Datos (Supabase)
 
-El sistema utiliza una tabla principal llamada **`gastos`** en PostgreSQL:
+El sistema requiere una tabla principal llamada **`gastos`** en PostgreSQL, con la siguiente estructura:
 
 | Columna | Tipo | Descripción |
 | :--- | :--- | :--- |
@@ -79,21 +95,30 @@ El sistema utiliza una tabla principal llamada **`gastos`** en PostgreSQL:
 | Acción / Comando | Descripción |
 | :--- | :--- |
 | `/start` | Inicia la conversación y muestra la bienvenida e instrucciones de uso |
-| `/ayuda` | Muestra ejemplos de mensajes válidos y la lista de comandos disponibles |
 | `/reporte` | Genera un resumen de los gastos del mes actual agrupados por categoría |
 | `/borrar` | Elimina el último gasto registrado por el usuario |
 | **Mensaje libre (Gasto)** | Ej: *"Compré un café en 4.500"* → La IA extrae los datos, lo guarda en Supabase y ofrece un botón **Deshacer** |
+| **Botón Deshacer** | Elimina el gasto específico asociado al mensaje de confirmación |
 | **Mensaje libre (Charla)** | Ej: *"Hola, ¿cómo estás?"* → El bot responde de forma conversacional sin alterar la base de datos |
+
+---
+
+## 💱 Alcance y limitaciones
+
+* La versión actual está destinada a gastos en pesos colombianos (COP). Aunque Gemini puede reconocer USD y EUR, `database.py` no almacena la moneda y los reportes consideran todos los montos como COP. Por ello, se deben registrar únicamente gastos en COP para obtener totales correctos. No se realiza conversión de divisas.
+* Se permite registrar, consultar y eliminar gastos; todavía no se implementa la edición de un registro existente.
+* El bot requiere conexión a Internet y que el proceso de Python esté en ejecución. Depende de la disponibilidad de Telegram, Gemini y Supabase.
+* Los mensajes libres se procesan de forma individual; no se mantiene un historial conversacional para completar gastos en mensajes posteriores.
 
 ---
 
 ## ⚙️ Instalación y Ejecución Local
 
-### 1. Clonar el repositorio
-```bash
-git clone <URL_DE_TU_REPOSITORIO>
-cd chat-bot
-```
+### 1. Obtener el repositorio
+
+Desde la página de este proyecto en GitHub, selecciona **Code → HTTPS** y copia la URL de clonación. En una terminal, ejecuta `git clone` seguido de la URL copiada. Luego ingresa a la carpeta creada. También puedes seleccionar **Code → Download ZIP**, descomprimir el archivo y abrir la carpeta del proyecto en una terminal.
+
+Los módulos deben llamarse exactamente `main.py`, `ai_service.py` y `database.py`.
 
 ### 2. Crear y activar el entorno virtual
 En **Windows (PowerShell)**:
@@ -121,11 +146,35 @@ TELEGRAM_TOKEN=tu_token_de_botfather
 GEMINI_API_KEY=tu_api_key_de_google_ai_studio
 GEMINI_MODEL=gemini-3.5-flash-lite
 GEMINI_MODEL_RESPALDO=gemini-2.5-flash
-SUPABASE_URL=[https://tu-proyecto.supabase.co](https://tu-proyecto.supabase.co)
+SUPABASE_URL=https://tu-proyecto.supabase.co
 SUPABASE_KEY=tu_clave_service_role_de_supabase
 ```
 
-### 5. Ejecutar el bot
+Los valores del ejemplo deben sustituirse por las credenciales reales del proyecto. Los identificadores de Gemini corresponden a los valores configurados por defecto en el código y pueden ajustarse según los modelos habilitados para la cuenta.
+
+### 5. Preparar la base de datos
+
+Si se utiliza un proyecto nuevo de Supabase, crea la tabla desde el editor SQL. El siguiente esquema es una configuración compatible con los campos que utiliza el código:
+
+```sql
+CREATE TABLE IF NOT EXISTS public.gastos (
+    id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    telegram_user_id bigint NOT NULL,
+    monto numeric NOT NULL CHECK (monto > 0),
+    categoria text NOT NULL,
+    descripcion text NOT NULL,
+    fecha_registro timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS gastos_usuario_fecha_idx
+    ON public.gastos (telegram_user_id, fecha_registro);
+
+ALTER TABLE public.gastos ENABLE ROW LEVEL SECURITY;
+```
+
+Este esquema habilita RLS sin crear políticas de acceso público. La clave de servidor `service_role` utilizada por el bot debe mantenerse exclusivamente en el entorno privado del servidor; esta clave omite RLS. No debe compartirse con los usuarios ni exponerse en el repositorio.
+
+### 6. Ejecutar el bot
 ```bash
 python main.py
 ```
@@ -134,6 +183,22 @@ python main.py
 
 ## 🔒 Seguridad y Buenas Prácticas
 
-* Las credenciales (`TELEGRAM_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_KEY`) nunca se almacenan en el código fuente; se cargan dinámicamente mediante `python-dotenv` y el archivo `.env` está bloqueado en `.gitignore`.
-* Cada consulta de lectura o eliminación en `database.py` exige coincidencia con el `telegram_user_id` del remitente, evitando que un usuario pueda ver o borrar registros de otro.
+* Las credenciales (`TELEGRAM_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_KEY`) nunca se almacenan en el código fuente; se cargan dinámicamente mediante `python-dotenv` y el archivo `.env` debe estar excluido mediante `.gitignore`.
+* Las consultas de gastos y las eliminaciones en `database.py` filtran por el `telegram_user_id` del remitente. Esta separación se aplica en la lógica del bot y no reemplaza la configuración de permisos de Supabase. Se recomienda utilizar el bot en chats privados, ya que en un grupo otros participantes podrían ver las respuestas.
 * Para despliegues en la nube (Railway / Render), el servicio debe ejecutarse como una única instancia (*worker* con `python main.py`) para evitar conflictos de *polling* (`getUpdates`) en la API de Telegram.
+
+---
+
+## ✅ Pruebas manuales sugeridas
+
+| Acción | Resultado esperado |
+| :--- | :--- |
+| Enviar `/start` | Mensaje de bienvenida e instrucciones |
+| Escribir `Gasté 25 mil en almuerzo` | Registro de 25.000 COP en Alimentación |
+| Escribir `Taxi 12k` | Registro de 12.000 COP en Transporte |
+| Enviar `/reporte` | Total mensual y desglose por categorías |
+| Presionar **Deshacer** | Eliminación del registro asociado al botón |
+| Enviar `/borrar` | Eliminación del último gasto disponible del usuario |
+| Escribir `Hola` | Respuesta conversacional sin crear un gasto |
+
+Estas pruebas deben realizarse con las credenciales configuradas y, para comprobar los totales de ejemplo, con un usuario sin gastos previos durante el mes.
